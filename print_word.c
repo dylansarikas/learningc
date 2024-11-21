@@ -2,7 +2,7 @@
 main() {
     int c;
     while ((c = getchar()) != EOF) {
-      	if (c == ' ') {
+        if (c == ' ') {
           printf("\n");
         }
       	else {
