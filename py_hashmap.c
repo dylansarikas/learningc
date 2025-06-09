@@ -174,7 +174,7 @@ struct HashMapEntry* __HashMapIter_next(struct HashMapIter* self)
     }
   
   	retval = self->__current;
-  	self->__current = self->__current->__next;
+  	if (self->__curent != NULL) self->__current = self->__current->__next;
   	return retval;
 }
 
