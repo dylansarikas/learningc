@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 struct TreeMapEntry {
     char *key;  /* public */
@@ -104,11 +105,22 @@ void __Map_check(struct TreeMap* self, struct TreeMapEntry *left, char *key, str
     }
 }
 
-#include "student.c"
-
 int __TreeMap_size(struct TreeMap* self)
 {
     return self->__count;
+}
+
+struct TreeMapEntry* __TreeMapIter_next(struct TreeMapIter* self)
+{
+    /* Advance the iterator.  Recall that when we first 
+     * create the iterator __current points to the first item
+     * so we must return an item and then advance the iterator.
+     */
+    struct TreeMapEntry *retval = self->__current;
+  	if (retval == NULL)
+      return NULL;
+  	self->__current = self->__current->__next;
+  	return retval;
 }
 
 struct TreeMapIter* __TreeMap_iter(struct TreeMap* self)
@@ -118,6 +130,109 @@ struct TreeMapIter* __TreeMap_iter(struct TreeMap* self)
     iter->next = &__TreeMapIter_next;
     iter->del = &__TreeMapIter_del;
     return iter;
+}
+
+void __TreeMap_put(struct TreeMap* self, char *key, int value) {
+    struct TreeMapEntry *cur, *left, *right;
+    int cmp;
+    struct TreeMapEntry *old, *new;
+    char *new_key;
+
+    cur = self->__root;
+    left = NULL;
+    right = NULL;
+  
+  	if (cur != NULL) {
+  		printf("ROOOOOOOT: %s\n", cur->key);
+  		self->dump(self);
+    }
+
+  	while (cur != NULL) {
+    //   printf("%s : %s\n", key, cur->key);
+      cmp = strcmp(key, cur->key);
+      if (cmp == 0) {
+        cur->value = value;
+        self->dump(self);
+        return;
+      }
+      if (cmp < 0) {
+        right = cur;
+        cur = cur->__left;
+      }
+      else {
+        left = cur;
+        cur = cur->__right;
+      }
+    }
+  
+    new = malloc(sizeof(*new));
+  	new->key = key;
+  	new->value = value;
+  	new->__left = NULL;
+  	new->__right = NULL;
+
+    if ( self->__head == NULL ) {
+    //   	printf("WHERE THE JOURNEY BEGINS:%s\n", key);
+        self->__head = new;
+        self->__root = new;
+        self->__count++;
+      	self->dump(self);
+    //   	printf("WHERE THE JOURNEY ENDS: %s\n", self->__root->key);
+    //   	self->dump(self);
+        return;
+    }
+
+    __Map_check(self, left, key, right);
+
+  	if (left != NULL) {
+      new->__next = right;
+      left->__next = new;
+    }
+  	else {
+      new->__next = self->__head;
+      self->__head = new;
+    }
+
+  	if (left != NULL && left->__right == NULL)
+      left->__right = new;
+  	else if (right != NULL && right->__left == NULL)
+      right->__left = new;
+  	else
+      printf("FAIL\n");
+  	
+//   	self->dump(self);
+  	self->__count++;
+}
+
+int __TreeMap_get(struct TreeMap* self, char *key, int def)
+{
+    int cmp;
+    struct TreeMapEntry *cur;
+
+    if ( self == NULL || key == NULL || self->__root == NULL ) return def;
+  
+  	if (self->__root != NULL) {
+  		printf("HERE IN GET: %s\n", self->__root->key);
+  		// self->dump(self);
+    }
+
+    cur = self->__root;
+
+    /* TODO: scan down the tree and if the key is found, return the value.
+     * If the key is not found, return the default value (def).
+     */
+  	while (cur != NULL) {
+      cmp = strcmp(key, cur->key);
+      if (cmp == 0)
+        return cur->value;
+      else if (cmp < 0)
+        cur = cur->__left;
+      else if (cmp > 0)
+        cur = cur->__right;
+    }
+
+//   	printf("POST GET: %s\n", cur->key);
+    return def;
 }
 
 struct TreeMap * TreeMap_new() {
@@ -137,153 +252,69 @@ struct TreeMap * TreeMap_new() {
     return p;
 }
 
-void __TreeMap_put(struct TreeMap* self, char *key, int value) {
-    struct TreeMapEntry *cur, *left, *right;
-    int cmp;
-    struct TreeMapEntry *old, *new;
-    char *new_key;
-
-    cur = self->__root;
-    left = NULL;
-    right = NULL;
-
-  	while (cur != NULL) {
-      cmp = strcmp(key, cur->key);
-      if (cmp == 0) {
-        cur->value = value;
-        return;
-      }
-      if (cmp < 0) {
-        right = cur;
-        cur = cur->__left;
-      }
-      else {
-        left = cur;
-        cur = cur->__right;
-      }
-    }
-    /* TODO: Loop through the tree from the root.  If the matches
-     * the node, update the value and return.  Ad the tree is scanned,
-     * keep track of the node containing largest key less than "key"
-     * in the variable left and the node containing the smallest key
-     * greater than "key" in the variable "right".  So if the key is
-     * not found, left will be the closest lower neighbor or null
-     * and right will be the closest greater neighbor or null.
-     */
-
-    /* Not found - time to insert into the linked list after old */
-    new = malloc(sizeof(*new));
-  	new->key = key;
-  	new->value = value;
-  	new->__left = NULL;
-  	new->__right = NULL;
-
-    /* TODO: Set up the new node with its new data. */
-
-    /* Empty list - add first entry */
-    if ( self->__head == NULL ) {
-        self->__head = new;
-        self->__root = new;
-      	self->__count++;
-        return;
-    }
-
-    /* Keep this in here - it will help you debug the above code */
-    __Map_check(self, left, key, right);
-
-    /* TODO: Insert into the sorted linked list */
-  	if (left != NULL) {
-      new->__next = right;
-      left->__next = new;
-    }
-  	else {
-      new->__next = self->__head;
-      self->__head = new;
-    }
-
-    /* TODO: Insert into the tree */
-  	if (left != NULL && left->__right == NULL)
-      left->__right = new;
-  	else if (right != NULL && right->__left == NULL)
-      right->__left = new;
-  	else
-      printf("FAIL\n");
-  
-  	self->__count++;
-
-}
-
-int __TreeMap_get(struct TreeMap* self, char *key, int def)
-{
-    int cmp;
-    struct TreeMapEntry *cur;
-
-    if ( self == NULL || key == NULL || self->__root == NULL ) return def;
-
-    cur = self->__root;
-
-    /* TODO: scan down the tree and if the key is found, return the value.
-     * If the key is not found, return the default value (def).
-     */
-  	while (cur != NULL) {
-      cmp = strcmp(key, cur->key);
-      if (cmp == 0)
-        return cur->value;
-      else if (cmp < 0)
-        cur = cur->__left;
-      else if (cmp > 0)
-        cur = cur->__right;
-    }
-
-    return def;
-}
-
-struct TreeMapEntry* __TreeMapIter_next(struct TreeMapIter* self)
-{
-    /* Advance the iterator.  Recall that when we first 
-     * create the iterator __current points to the first item
-     * so we must return an item and then advance the iterator.
-     */
-    struct TreeMapEntry *retval = self->__current;
-  	if (retval == NULL)
-      return NULL;
-  	self->__current = self->__current->__next;
-  	return retval;
-}
-
 int main(void)
 {
     struct TreeMap * map = TreeMap_new();
     struct TreeMapEntry *cur;
     struct TreeMapIter *iter;
+    // char word[24][100] = ["the", "clown", "ran", "after", "the", "car", "and", "the", "car", "ran", "into", "the", "tent", "and", "the", "tent", "fell", "down", "on", "the", "clown", "and", "the", "car"];  /* Yes, this is dangerous */
+    char * word[] = {
+    "the",
+ "clown",
+ "ran",
+ "after",
+ "the",
+ "car",
+ "and",
+ "the",
+ "car",
+ "ran",
+ "into",
+ "the",
+ "tent",
+ "and",
+ "the",
+ "tent",
+ "fell",
+ "down",
+ "on",
+ "the",
+ "clown",
+ "and",
+ "the",
+ "car"
+    };
+    int i;
+    int count, maxvalue;
+    char *maxkey;
 
     setvbuf(stdout, NULL, _IONBF, 0);  /* Internal */
 
-    map->debug = 1 == 1;
+    /* Turn off debug */
+    map->debug = 0;
 
-    printf("Testing TreeMap\n");
-    map->put(map, "h", 42);
-    map->put(map, "d", 8);
-    map->put(map, "f", 5);
-    map->put(map, "b", 123);
-    map->dump(map);
-    map->put(map, "k", 9);
-    map->put(map, "m", 67);
-    map->put(map, "j", 12);
-    map->put(map, "f", 6);
-    map->dump(map);
+    /* Loop over each word in the file */
+    for (i=0; i < 24; i++) {
+        printf("Word: %s\n", word[i]);
+        count = map->get(map, word[i], 0);
+        map->put(map, word[i], count+1);
+        printf("Done\n");
+    }
+    
 
-    printf("r=%d\n", map->get(map, "r", 42));
-    printf("x=%d\n", map->get(map, "x", 42));
-
-    printf("\nIterate\n");
+    maxkey = NULL;
+    maxvalue = -1;
     iter = map->iter(map);
     while(1) {
         cur = iter->next(iter);
         if ( cur == NULL ) break;
-        printf(" %s=%d\n", cur->key, cur->value);
+        if ( maxkey == NULL || cur->value > maxvalue ) {
+            maxkey = cur->key;
+            maxvalue = cur->value;
+        }
     }
     iter->del(iter);
+    printf("HERE AT THE END OF ALL THINGS \n%s %d\n", maxkey, maxvalue);
 
     map->del(map);
 }
